@@ -6,6 +6,8 @@ function msh = AFQ_meshSet(msh, param, varargin)
 % msh = AFQ_meshSet(msh, 'vertex','name', vertices)
 % msh = AFQ_meshSet(msh, 'vertex','name', vertices, faces)
 % msh = AFQ_meshSet(msh, 'vertex','name', vertices, faces, map2origin)
+% msh = AFQ_meshSet(msh, 'normals','name', n)
+
 switch(param)
     case('vertices')
         % Set which vertices to render
@@ -44,6 +46,8 @@ switch(param)
             tmp = smoothpatch(AFQ_meshGet(msh,'tr'), [], sIter);
             % Add them to the corresponding vertex field
             msh.vertex.(vName) = tmp.vertices;
+            % And note that the coresponding faces are the same as origin
+            msh.face.(vName) = 'origin';
             % Set these new vertices to the ones that will be rendered
             msh = AFQ_meshSet(msh,'vertices',vName);
         end
@@ -122,4 +126,8 @@ switch(param)
             msh.face.(varargin{1})       = varargin{3};
             msh.map2origin.(varargin{1}) = varargin{4};
         end
+    case 'normals'
+        % Save normals that were calculated for varargine{1} vertices
+        msh.normals.(varargin{1}) = varargin{2};
+        
 end

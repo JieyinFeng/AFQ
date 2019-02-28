@@ -1,6 +1,40 @@
-function msh = AFQ_meshAddRoi(msh, roiPath, color, dilate, alpha)
-% Color mesh vertices based on a region of interest
+function msh = AFQ_meshAddRoi(msh, roiPath, color, dilate, alpha, useDistThresh, useNormals)
+% Color mesh vertices based on a region of interest and add to msh obj
+%
+% msh = AFQ_meshAddRoi(msh, roiPath, color, dilate, alpha, useDistThresh, useNormals)
+%
+% This function maps an roi to a mesh. See AFQ_meshCreate. ROI should be a
+% binary nifti image that coregistered to the mesh. This is done by either
+% finding the nearest mesh vertex to each ROI coordinate or by searching
+% for mesh vertices that are within a defined distance of the roi.
+%
+% Inputs:
+%
+% msh           - AFQ msh structure. See AFQ_meshCreate
+% roiPath       - Path to the roi.nii.gz file. A binary image of the roi
+% color         - [r g b] value to color the mesh
+% dilate        - scaler denoting how many adjacent vertices to expand the roi to
+% alpha         - transparency of roi on mesh
+% useDistThresh - default to 0. This means we map each roi coord to the
+%                 neares mesh vertex. If a scaler is provided then, 
+%                 instead, we map the roi to every vertex that is less 
+%                 than useDistThresh mm from the roi
+% useNormals    - If a distance thresh is supplied than use normals
+%                 indicates whether distance should be euclidean or
+%                 distance along the normal. binary. default true (1)
+%
+% Outputs:
+%
+% msh - msh struct file
+%
+% Copyright Jason D. Yeatman
 
+if notDefined('useDistThresh')
+    useDistThresh = 0;
+end
+if notDefined('useNormals')
+    useNormals = 1;
+end
 if notDefined('dilate')
     dilate = 0;
 end
@@ -29,8 +63,37 @@ for ch = 1:length(rmchar)
 end
 valname(strfind(valname,' ')) = '_';
 valname(strfind(valname,'-')) = '_';
-% Find the closes mesh vertex to each coordinate
-msh_indices = nearpoints(roi.coords', msh.vertex.origin');
+
+% Map the ROI to the mesh
+if useDistThresh == 0
+    % Find the closes mesh vertex to each coordinate
+    msh_indices = nearpoints(roi.coords', msh.vertex.origin');
+else
+    % Or find mesh vertices that are closer than useDistThresh to any roi
+    % coordinate.
+    [roi_indices, bestSqDist] = nearpoints(msh.vertex.origin', roi.coords');
+    msh_indices = find(bestSqDist<(useDistThresh^2));
+    
+    % For vertices within the threshold check if the ROI point lies
+    % along the normal or not
+    if useNormals == 1
+        % Get vertices and normals
+        vlist = msh.vertex.origin(msh_indices,:);
+        nlist = real(msh.normals.smooth20(bestSqDist<(useDistThresh^2),:));
+        % Stack up vertices expanded along the normals
+        c=0;
+        for dd = 1:useDistThresh
+            c = c+1;
+            [~, vlist_sqd(c,:)] = nearpoints(vlist'+ dd.*nlist', roi.coords');
+        end
+        % Now check if these normals intersect the roi coords with a
+        % distance of less than 1mm
+        norm_indices = any(vlist_sqd <= 1);
+        % Remove msh_indices that do not meet this criterion
+        msh_indices = msh_indices(norm_indices);
+    end
+end
+
 % Dilate the roi to neighboring vertices
 if dilate > 0
     for ii = 1:dilate

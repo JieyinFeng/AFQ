@@ -315,6 +315,9 @@ switch(param)
     case{'mrtrixpath' 'mrtrixpaths'}
         val.csd = afq.files.mrtrix.csd{varargin{1}};
         val.wm  = afq.files.mrtrix.wm{varargin{1}};
+        if afq.params.track.multishell
+            val.tt5  = afq.files.mrtrix.tt5{varargin{1}};
+        end
     case{'showfigures' 'showfigs'}
         val = logical(afq.params.showfigs);
     case{'fiberweighting'}
@@ -405,6 +408,8 @@ switch(param)
             tdir = fullfile(fileparts(which('mrDiffusion.m')), 'templates');
             val = fullfile(tdir, 'MNI_JHU_T2.nii.gz');
         end
+    case {'mrtrixversion'}
+        val = afq.software.mrtrixVersion;    
 
     otherwise
         error('Uknown afq parameter');
